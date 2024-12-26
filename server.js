@@ -65,7 +65,7 @@ app.post('/api/createUser', upload.single('image'), async (req, res) => {
       return res.status(400).json({ message: 'Unique name already exists!' });
     }
 
-    const imagePath = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : null;
+    const imagePath = req.file ? `https://maha-kumbh-backned.onrender.com/uploads/${req.file.filename}` : null;
     const newUrl = `${baseUrl}${uniqueName}`;
     const newUser = new User({ username, uniqueName, url: newUrl, image: imagePath });
     await newUser.save();
