@@ -52,7 +52,7 @@ const User = mongoose.model('User', userSchema);
 // API to handle user creation with image upload
 app.post('/api/createUser', upload.single('image'), async (req, res) => {
   const { username, uniqueName } = req.body;
-  const baseUrl = 'http://localhost:5173/user/';
+  const baseUrl = 'https://maha-kumbh.netlify.app/user/';
 
   if (!username || !uniqueName) {
     return res.status(400).json({ message: 'Username and unique name are required!' });
@@ -92,5 +92,5 @@ app.get('/api/user/:uniqueName', async (req, res) => {
 });
 
 // Start Server
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
