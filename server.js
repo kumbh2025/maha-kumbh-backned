@@ -91,6 +91,16 @@ app.get('/api/user/:uniqueName', async (req, res) => {
   }
 });
 
+// API to fetch total user count
+app.get('/api/userCount', async (req, res) => {
+  try {
+    const userCount = await User.countDocuments(); // Count total users in the database
+    res.status(200).json({ count: userCount });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
