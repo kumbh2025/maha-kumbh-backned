@@ -4,18 +4,23 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const multer = require('multer'); // For handling file uploads
-const path = require('path'); // For managing file paths
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2; // Cloudinary integration
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Cloudinary configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // App setup
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
-
-// Serve uploaded images statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // MongoDB Connection
 const mongoUri = process.env.MONGO_URI;
@@ -27,16 +32,14 @@ mongoose
     process.exit(1); // Exit the process if MongoDB connection fails
   });
 
-// Configure multer for file storage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // Save files to 'uploads/' folder
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname); // Generate unique filenames
+// Configure multer with Cloudinary storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'user_images', // Folder in Cloudinary where images will be stored
+    allowed_formats: ['jpg', 'jpeg', 'png'], // Allowed file formats
   },
 });
-
 const upload = multer({ storage });
 
 // User Schema
@@ -44,13 +47,13 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
   uniqueName: { type: String, required: true, unique: true },
   url: { type: String, required: true },
-  image: { type: String }, // Field to store the image path
+  images: [{ type: String }], // Array to store multiple image URLs
 });
 
 const User = mongoose.model('User', userSchema);
 
-// API to handle user creation with image upload
-app.post('/api/createUser', upload.single('image'), async (req, res) => {
+// API to handle user creation with multiple image uploads
+app.post('/api/createUser', upload.array('images', 7), async (req, res) => {
   const { username, uniqueName } = req.body;
   const baseUrl = 'https://maha-kumbh.netlify.app/user/';
 
@@ -65,12 +68,14 @@ app.post('/api/createUser', upload.single('image'), async (req, res) => {
       return res.status(400).json({ message: 'Unique name already exists!' });
     }
 
-    const imagePath = req.file ? `https://maha-kumbh-backned.onrender.com/uploads/${req.file.filename}` : null;
+    // Extract image URLs from uploaded files
+    const imagePaths = req.files.map(file => file.path);
+
     const newUrl = `${baseUrl}${uniqueName}`;
-    const newUser = new User({ username, uniqueName, url: newUrl, image: imagePath });
+    const newUser = new User({ username, uniqueName, url: newUrl, images: imagePaths });
     await newUser.save();
 
-    res.status(201).json({ message: 'User created successfully!', url: newUrl });
+    res.status(201).json({ message: 'User created successfully!', url: newUrl, images: imagePaths });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
