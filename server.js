@@ -48,17 +48,22 @@ const userSchema = new mongoose.Schema({
   uniqueName: { type: String, required: true, unique: true },
   url: { type: String, required: true },
   images: [{ type: String }], // Array to store multiple image URLs
+  password: { type: String, required: true, minlength: 4, maxlength: 4 }, // 4-digit numeric password
 });
 
 const User = mongoose.model('User', userSchema);
 
 // API to handle user creation with multiple image uploads
 app.post('/api/createUser', upload.array('images', 7), async (req, res) => {
-  const { username, uniqueName } = req.body;
+  const { username, uniqueName, password } = req.body;
   const baseUrl = 'https://maha-kumbh.netlify.app/user/';
 
-  if (!username || !uniqueName) {
-    return res.status(400).json({ message: 'Username and unique name are required!' });
+  if (!username || !uniqueName || !password) {
+    return res.status(400).json({ message: 'Username, unique name, and password are required!' });
+  }
+
+  if (!/^\d{4}$/.test(password)) {
+    return res.status(400).json({ message: 'Password must be exactly 4 numeric digits!' });
   }
 
   try {
@@ -69,13 +74,44 @@ app.post('/api/createUser', upload.array('images', 7), async (req, res) => {
     }
 
     // Extract image URLs from uploaded files
-    const imagePaths = req.files.map(file => file.path);
+    const imagePaths = req.files.map((file) => file.path);
 
     const newUrl = `${baseUrl}${uniqueName}`;
-    const newUser = new User({ username, uniqueName, url: newUrl, images: imagePaths });
+    const newUser = new User({ username, uniqueName, url: newUrl, images: imagePaths, password });
     await newUser.save();
 
     res.status(201).json({ message: 'User created successfully!', url: newUrl, images: imagePaths });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// API to delete a user by uniqueName and password
+app.delete('/api/deleteUser', async (req, res) => {
+  const { uniqueName, password } = req.body;
+
+  if (!uniqueName || !password) {
+    return res.status(400).json({ message: 'Unique name and password are required!' });
+  }
+
+  if (!/^\d{4}$/.test(password)) {
+    return res.status(400).json({ message: 'Password must be exactly 4 numeric digits!' });
+  }
+
+  try {
+    const user = await User.findOne({ uniqueName });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found!' });
+    }
+
+    if (user.password !== password) {
+      return res.status(401).json({ message: 'Invalid password!' });
+    }
+
+    // Delete the user
+    await User.deleteOne({ uniqueName });
+    res.status(200).json({ message: 'User deleted successfully!' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
