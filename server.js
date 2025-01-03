@@ -56,7 +56,7 @@ const User = mongoose.model('User', userSchema);
 // API to handle user creation with multiple image uploads
 app.post('/api/createUser', upload.array('images', 7), async (req, res) => {
   const { username, uniqueName, password } = req.body;
-  const baseUrl = 'https://mahakumbh.netlify.app/user/';
+  const baseUrl = 'https://mahakumbh.live/user/';
 
   if (!username || !uniqueName || !password) {
     return res.status(400).json({ message: 'Username, unique name, and password are required!' });
